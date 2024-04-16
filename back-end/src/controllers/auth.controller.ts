@@ -1,36 +1,34 @@
-import { Request, Response } from "express";
-import { z, ZodError } from "zod";
+import { NextFunction, Request, Response } from "express";
+import { User } from "../modules/user.module.js";
+import j from "joi";
+import bcrypt from "bcryptjs";
+import { errorHandler } from "../utils/error.js";
 
-const authScheme = z.object({
-  username: z.string().min(4, {
-    message: "username is mandatory and it should me 4 char*",
-  }),
-  password: z.string().min(4, {
-    message: "password is mandatory and it should me 4 char*",
-  }),
-  email: z
-    .string({
-      invalid_type_error: "email is mandatory",
-    })
-    .email({
-      message: "invalid email type",
-    }),
+const signupSheme = j.object({
+  username: j.string().min(2).required(),
+  email: j.string().email().required(),
+  password: j.string().min(4).max(12).required(),
 });
 
-export const signup = async (req: Request, res: Response) => {
+export const signup = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const validatedData = authScheme.parse(req.body);
-
-    console.log("Validated Data:", validatedData);
-
+    const { value, error } = signupSheme.validate(req.body);
+    if (error) {
+      console.error("Error during signup:", error);
+      next(errorHandler(400, error.details));
+    }
+    const hasPassword = bcrypt.hashSync(value.password, 10);
+    const newUser = new User({
+      ...value,
+      password: hasPassword,
+    });
+    await newUser.save();
     res.status(201).json({ message: "User created successfully" });
   } catch (error) {
-    if (error instanceof ZodError) {
-      const errorMessages = error.errors.map((err) => err.message);
-      res.status(400).json({ errors: errorMessages });
-    } else {
-      console.error("Error during signup:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
+    next(errorHandler(500, "Internal server error"));
   }
 };

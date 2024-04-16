@@ -1,62 +1,110 @@
 import React from "react";
-import { Form, useForm } from "react-hook-form";
-import { useSearchParams } from "react-router-dom";
+import {
+  useFetcher,
+  Link,
+  useSearchParams,
+  json,
+  redirect,
+} from "react-router-dom";
+import { Button, ButtonGroup, FloatingLabel, TextInput } from "flowbite-react";
+import TextHeading from "../components/ui/TextHeading";
+import axios from "axios";
 function AuthProvider() {
-  const { handleSubmit, setValue, register, getValues, control } = useForm({
-    mode: "onSubmit",
-    reValidateMode: "onChange",
-    shouldUnregister: false,
-  });
-
+  const fetcher = useFetcher();
   const [searchParams] = useSearchParams();
   const isLogin = searchParams.get("mode") === "signUp";
 
   return (
-    <main className="h-screen bg-shadeClr py-5 flex justify-center items-center">
-      <div className="max-w-xl  flex-1 flex flex-col items-center bg-[#f1f3f6] justify-center border-slate-200 border shadow-loginPage">
-        <h1 className="text-primary font-bold text-4xl p-6">
-          De<span className="text-[#1d1d1d]">sign</span>
-        </h1>
-        <Form control={control}>
-          <section className="flex items-center flex-col gap-7 ">
-            <label
-              htmlFor="userName"
-              className="py-2 px-4 bg-[#f1f3f6] shadow-inner  rounded-md"
-            >
-              <input
-                placeholder="User Name"
-                type="text"
-                name="userName"
-                className="bg-transparent focus:outline-0  placeholder:text-[#9ea4b0] caret-[#9ea4b0]"
-                id="userName"
-                {...register("userName")}
-              />
+    <main className="flex justify-center items-center bg-shadeClr py-5 h-screen">
+      <div className="border-slate-200 bg-[#f1f3f6] shadow-loginPage px-5 py-2 border w-100 max-w-xl">
+        {/* header */}
+        <section>
+          <TextHeading
+            containerClassName={"text-center flex w-100 justify-center"}
+          />
+          <p className="font-semibold text-center text-gray-500">
+            This is demo project. You can sign {isLogin ? "up" : "in"} with you
+            email and password or with google account
+          </p>
+        </section>
+        {/* form section */}
+        <section className="flex justify-center mt-3">
+          <fetcher.Form
+            method={isLogin ? "POST" : "PUT"}
+            className="flex-1 max-w-xs font-semibold text-sm"
+          >
+            {isLogin && (
+              <label htmlFor="text" className="[&>div]:my-2">
+                Username
+                <TextInput id="text" name="username" />
+              </label>
+            )}
+
+            <label htmlFor="email" className="[&>div]:my-2">
+              Email
+              <TextInput id="email" name="email" />
+            </label>
+            <label htmlFor="password">
+              Password
+              <TextInput id="password" name="password" />
             </label>
 
-            <label
-              htmlFor="password"
-              className="p-2  px-4 bg-[#e3e9f2] shadow-inner  rounded-md "
-            >
-              <input
-                type="text"
-                placeholder="Password"
-                className="bg-transparent focus:outline-0 placeholder:text-[#9ea4b0] caret-[#9ea4b0]"
-                name="password"
-                id="password"
-                {...register("password")}
-              />
-            </label>
-          </section>
-          <p className="text-gray-400 text-sm text-end my-3">
-            Forget password?
-          </p>
-          <button className="bg-[#5193f2] text-white w-full p-3 rounded-md mb-4">
-            {isLogin ? "Sign In" : "Login"}
-          </button>
-        </Form>
+            <div className="flex justify-center mt-4">
+              <ButtonGroup className="gap-2">
+                <Button color={"gray"} type="submit" className="rounded-md">
+                  {isLogin ? "Sign Up" : "Sign In"}
+                </Button>
+                <Button className="rounded-md">Continue with Google</Button>
+              </ButtonGroup>
+            </div>
+          </fetcher.Form>
+        </section>
+        {/* login section */}
+        <p className="flex justify-center items-center gap-1 mt-4">
+          {isLogin ? "Have an account?" : "i dont't have account"}
+          <Link to={`/auth?mode=${isLogin ? "signIn" : "signUp"}`}>
+            <TextHeading
+              containerClassName={"text-sm"}
+              label={{
+                1: "sign",
+                2: isLogin ? "In" : "Up",
+              }}
+            />
+          </Link>
+        </p>
       </div>
     </main>
   );
 }
 
 export default AuthProvider;
+
+export async function authAction({ request }) {
+  const { method } = await request;
+  const data = await request.formData();
+  const authData = {
+    email: data.get("email"),
+    password: data.get("password"),
+  };
+  if (method === "POST") {
+    authData.username = data.get("username");
+  }
+
+  const response = await fetch(`http://localhost:3120/api/auth/signup`, {
+    method: request.method,
+    body: JSON.stringify(authData),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  console.log(response);
+  if (response.status === 400) {
+    return response;
+  }
+  if (!response.data) {
+    throw json({ message: "Could not save email" }, { status: 500 });
+  }
+
+  redirect("/");
+}

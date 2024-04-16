@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import userRoute from "./routes/user.routes.js";
 import authRoute from "./routes/auth.route.js";
+import { MongoClient, ServerApiVersion } from "mongodb";
+import { nextErrors } from "./middleware/errorHandle.js";
 
 const app = express();
 
@@ -29,6 +31,4 @@ app.use("/api/user", userRoute);
 
 app.use("/api/auth", authRoute);
 
-// app.use("api/user", (req, res) => {
-//   res.json({ message: "af" });
-// });
+app.use(nextErrors);
