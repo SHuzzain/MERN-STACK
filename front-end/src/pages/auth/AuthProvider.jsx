@@ -6,13 +6,16 @@ import {
   json,
   redirect,
 } from "react-router-dom";
-import { Button, ButtonGroup, FloatingLabel, TextInput } from "flowbite-react";
+import { Button, ButtonGroup, TextInput } from "flowbite-react";
 import TextHeading from "../components/ui/TextHeading";
 import axios from "axios";
+import { handleFetchError } from "../../../lib/errorFetch";
 function AuthProvider() {
   const fetcher = useFetcher();
   const [searchParams] = useSearchParams();
   const isLogin = searchParams.get("mode") === "signUp";
+
+  console.log(fetcher.data, fetcher.json, "", fetcher.text);
 
   return (
     <main className="flex justify-center items-center bg-shadeClr py-5 h-screen">
@@ -80,31 +83,28 @@ function AuthProvider() {
 export default AuthProvider;
 
 export async function authAction({ request }) {
-  const { method } = await request;
-  const data = await request.formData();
-  const authData = {
-    email: data.get("email"),
-    password: data.get("password"),
-  };
-  if (method === "POST") {
-    authData.username = data.get("username");
-  }
+  try {
+    const { method } = await request;
+    const data = await request.formData();
+    const authData = {
+      email: data.get("email"),
+      password: data.get("password"),
+    };
+    if (method === "POST") {
+      authData.username = data.get("username");
+    }
+    const res = await axios.post("api/auth/signup", {
+      data: authData,
+    });
 
-  const response = await fetch(`http://localhost:3120/api/auth/signup`, {
-    method: request.method,
-    body: JSON.stringify(authData),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  console.log(response);
-  if (response.status === 400) {
-    return response;
+    if (!res.data) {
+      throw json({ message: "Could not save email" }, { status: 500 });
+    }
+    redirect("/");
+    return res;
+  } catch (error) {
+    return json(handleFetchError(error.response.data.message), {
+      status: error.response.status,
+    });
   }
-  if (!response.data) {
-    throw json({ message: "Could not save email" }, { status: 500 });
-  }
-
-  redirect("/");
 }

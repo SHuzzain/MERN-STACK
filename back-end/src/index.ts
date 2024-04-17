@@ -3,14 +3,16 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import userRoute from "./routes/user.routes.js";
 import authRoute from "./routes/auth.route.js";
-import { MongoClient, ServerApiVersion } from "mongodb";
 import { nextErrors } from "./middleware/errorHandle.js";
+import cros from "cors";
 
 const app = express();
 
 dotenv.config();
 
 app.use(express.json());
+
+app.use(cros());
 
 mongoose
   .connect(process.env.MONGO_CONNECTION as string)
