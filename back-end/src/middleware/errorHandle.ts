@@ -1,17 +1,11 @@
-import { NextFunction, Request, Response } from "express";
-import { ErrorProps } from "../types/types";
+import { ErrorRequestHandler } from "express";
 
-export const nextErrors = (
-  error: ErrorProps,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const nextErrors: ErrorRequestHandler = (error, req, res, next) => {
   const statusCode = error.statusCode || 500;
-  const message = error.message ?? "Internal server error";
+  const statusMessage = error.statusMessage ?? "Internal server error";
   res.status(statusCode).json({
     success: false,
     statusCode,
-    message,
+    statusMessage,
   });
 };

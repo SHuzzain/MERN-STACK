@@ -6,16 +6,31 @@ import {
   json,
   redirect,
 } from "react-router-dom";
-import { Button, ButtonGroup, TextInput } from "flowbite-react";
+import { Button, TextInput } from "flowbite-react";
 import TextHeading from "../components/ui/TextHeading";
 import axios from "axios";
+import J from "joi";
 import { handleFetchError } from "../../../lib/errorFetch";
+import ErrorMassage from "../components/ui/error-messag";
+import { cn } from "../../../lib/utils";
+
+const loginSchema = J.object({
+  username: J.string()
+    .min(4)
+    .max(10)
+    .alter({
+      POST: (schema) => schema.required(),
+      PUT: (schema) => schema.forbidden(),
+    }),
+  email: J.string().email({ tlds: false }).min(4).required(),
+  password: J.string().min(5).max(20).required(),
+});
+
 function AuthProvider() {
   const fetcher = useFetcher();
   const [searchParams] = useSearchParams();
   const isLogin = searchParams.get("mode") === "signUp";
-
-  console.log(fetcher.data, fetcher.json, "", fetcher.text);
+  const errorMassages = fetcher.data?.fetchError ? fetcher.data : false;
 
   return (
     <main className="flex justify-center items-center bg-shadeClr py-5 h-screen">
@@ -39,26 +54,58 @@ function AuthProvider() {
             {isLogin && (
               <label htmlFor="text" className="[&>div]:my-2">
                 Username
-                <TextInput id="text" name="username" />
+                <TextInput
+                  id="text"
+                  name="username"
+                  color={errorMassages?.username ? "failure" : "gray"}
+                />
+                {errorMassages?.username && (
+                  <ErrorMassage message={errorMassages.username} />
+                )}
               </label>
             )}
 
             <label htmlFor="email" className="[&>div]:my-2">
               Email
-              <TextInput id="email" name="email" />
+              <TextInput
+                id="email"
+                name="email"
+                color={errorMassages?.email ? "failure" : "gray"}
+              />
+              {errorMassages?.email && (
+                <ErrorMassage message={errorMassages.email} />
+              )}
             </label>
             <label htmlFor="password">
               Password
-              <TextInput id="password" name="password" />
+              <TextInput
+                id="password"
+                name="password"
+                color={errorMassages?.password ? "failure" : "gray"}
+              />
+              {errorMassages?.password && (
+                <ErrorMassage message={errorMassages.password} />
+              )}
             </label>
 
-            <div className="flex justify-center mt-4">
-              <ButtonGroup className="gap-2">
-                <Button color={"gray"} type="submit" className="rounded-md">
-                  {isLogin ? "Sign Up" : "Sign In"}
-                </Button>
-                <Button className="rounded-md">Continue with Google</Button>
-              </ButtonGroup>
+            <div className="flex flex-col justify-center gap-2 mt-4">
+              <Button
+                color={"gray"}
+                type="submit"
+                className={cn(
+                  `rounded-md`,
+                  fetcher.state === "submitting" && "animate-pulse"
+                )}
+                disabled={fetcher.state === "submitting"}
+              >
+                {isLogin ? "Sign Up" : "Sign In"}
+              </Button>
+              <Button
+                disabled={fetcher.state === "submitting"}
+                className="rounded-md"
+              >
+                Continue with Google
+              </Button>
             </div>
           </fetcher.Form>
         </section>
@@ -84,18 +131,25 @@ export default AuthProvider;
 
 export async function authAction({ request }) {
   try {
+    // handle post method and put method same function
     const { method } = await request;
     const data = await request.formData();
+    const URL = method === "POST" ? "signup" : "signin";
     const authData = {
       email: data.get("email"),
       password: data.get("password"),
     };
+
     if (method === "POST") {
       authData.username = data.get("username");
     }
-    const res = await axios.post("api/auth/signup", {
-      data: authData,
-    });
+    // joi error check
+    const clietError = loginSchema.tailor(method).validate(authData);
+    if (clietError?.error?.message) {
+      throw { statusMassage: clietError.error.details, joi: true };
+    }
+
+    const res = await axios[method.toLowerCase()](`api/auth/${URL}`, authData);
 
     if (!res.data) {
       throw json({ message: "Could not save email" }, { status: 500 });
@@ -103,8 +157,17 @@ export async function authAction({ request }) {
     redirect("/");
     return res;
   } catch (error) {
-    return json(handleFetchError(error.response.data.message), {
-      status: error.response.status,
-    });
+    console.error(error);
+    if (error?.joi) {
+      return json(handleFetchError(error.statusMassage), {
+        status: 400,
+      });
+    }
+    return json(
+      { message: "something wrong" },
+      {
+        status: 500,
+      }
+    );
   }
 }

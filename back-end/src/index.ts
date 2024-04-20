@@ -5,12 +5,20 @@ import userRoute from "./routes/user.routes.js";
 import authRoute from "./routes/auth.route.js";
 import { nextErrors } from "./middleware/errorHandle.js";
 import cros from "cors";
+import bodyParser from "body-parser";
+import path from "path";
 
 const app = express();
 
 dotenv.config();
 
-app.use(express.json());
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
+
+app.use(bodyParser.json());
 
 app.use(cros());
 
@@ -27,6 +35,12 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port  ${PORT}`);
+});
+
+app.use(express.static(path.join(__dirname, "../public")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/rootPage/index.html"));
 });
 
 app.use("/api/user", userRoute);

@@ -1,11 +1,14 @@
+import { replaceChar } from "../utils/removeChar";
+
 let fetchErrorProps = [{ message: "", context: { label: "", key: "" } }];
 
 export const handleFetchError = (data = fetchErrorProps) => {
-  const result = {};
-
+  const errorMessage = {
+    fetchError: true,
+  };
   data.map((dt) => {
-    result[dt.context.label] = dt.message;
+    errorMessage[dt.context.label] = replaceChar(dt.message, `"`);
   });
 
-  return result;
+  return errorMessage;
 };
